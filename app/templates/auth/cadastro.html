@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro</title>
+</head>
+<body>
+    
+    <h1>Criar conta</h1>
+
+    <form action="auth/cadastro" method="post">
+        Nome de usuário: <input type="text" id="username" name="username" required><br><br>
+        
+        Email: <input type="email" id="email" name="email" required><br><br>
+
+       Senha: <input type="password" id="password" name="password" required><br><br>
+
+        <button type="submit">Cadastrar</button>
+    </form>
+
+    <p>Já tem uma conta? <a href="/auth/login">Entrar</a>.
+    </p>
+
+
+</body>
+</html>
