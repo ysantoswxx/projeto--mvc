@@ -1,4 +1,4 @@
-#Rotas de aultenticação vai ficar aqui
+# Rotas de autenticação vai ficar aqui
 
 from fastapi import APIRouter, Depends, Request, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -10,57 +10,127 @@ from app.database import get_db
 from app.models.usuarios import Usuario
 from app.auth import hash_senha, verificar_senha, criar_token
 
-# APIRouter agrupa as rotas dentro desse módulo com o pefixo /auth
-router = APIRouter(prefix="/auth", tags= ["Autenticação"])
+# APIRouter agrupa as rotas dentro desse módulo com o prefixo /auth
+router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 templates = Jinja2Templates(directory="app/templates")
-
-
-#Tela de cadastro 
+#Tela de cadastro
 @router.get("/cadastro")
 def tela_cadastro(request: Request):
     return templates.TemplateResponse(
         request,
-        "auth/cadastro.html", 
+        "auth/cadastro.html",
         {"request": request}
     )
 
+#Tela de login
 @router.get("/login")
 def tela_login(request: Request):
     return templates.TemplateResponse(
         request,
-        "auth/login.html", 
+        "auth/login.html",
         {"request": request}
     )
-    
-#Rota para criar o usuario 
+
+# Rota para criar o usuario
 @router.post("/cadastro")
-def fazer_cadasro(
-    request : Request,
+def fazer_cadastro(
+    request: Request,
     nome: str = Form(...),
     email: str = Form(...),
     senha: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    #Verificar se o email já existe
-    usuario_existente = db.query(Usuario).filter(Usuario.email == email).first()
+    # Verificar se o email já está cadastrado
+    usuario_existente = db.query(Usuario).filter_by(email=email).first()
 
-#Mensagem de erro se o email estiver cadastrado
+    # Mensagem de erro se o email estiver cadastrado
     if usuario_existente:
         return templates.TemplateResponse(
             request,
             "auth/cadastro.html",
-            {"request": request, "erro": "Esse Email já está cadastrado"}
+            {"request": request, "erro": "Este E-mail já está cadastrado."},
+            status_code=400
         )
-    
+   
     #Criar o usuario - criar o objeto
     novo_usuario = Usuario(
         nome=nome,
         email=email,
-        senha_hash=hash_senha(senha)
+        senha_hash=hash_senha(senha)      
     )
 
     db.add(novo_usuario)
     db.commit()
 
-    return RedirectResponse(url="/auth/login", status_code=302)
+    return RedirectResponse(url="/auth/login?erro=cadastro=ok", status_code=302)
+
+
+# Fazer o login
+@router.post("/login")
+def fazer_login(
+    request: Request,
+    email: str = Form(...),
+    senha: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # 1. Busca o usuário pelo email no db
+    usuario = db.query(Usuario).filter_by(email=email).first()
+
+    # 2. Verificar a senha com bcrypt
+    senha_correta = (
+        usuario is not None and verificar_senha(senha, usuario.senha_hash)
+    )
+   
+    if not senha_correta:
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {
+                "request": request,
+                "erro": "E-mail ou senha incorretos"
+            }
+        )
+   
+    # Verificar se o usuário está ativo
+    if not usuario.ativo:
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {
+                "request": request,
+                "erro": "Usuário inativo. Contate o administrador."
+            }
+        )
+
+    # 3. Gera o token JWT
+    # Dados do token (payload)
+    token_data = {
+        "sub": usuario.email,
+        "nome": usuario.nome,
+        "role": usuario.role,
+        "id": usuario.id
+    }
+
+    token = criar_token(token_data)
+
+    # 4. Salvar o token em um cookie e redirecionar para página home
+    response = RedirectResponse(url="/", status_code=302)
+
+    # Define o cookie com o token JWT
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        max_age=3600, # Expira em 1 hora
+        samesite="lax"
+    )
+
+    return response
+
+
+@router.get("/logout")
+def sair(request: Request):
+    response = RedirectResponse(url="/auth/login", status_code=302)
+    response.delete_cookie(key="access_token")
+    return response

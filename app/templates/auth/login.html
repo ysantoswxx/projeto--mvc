@@ -9,10 +9,18 @@
     
     <h1>Entrar no Sistema</h1>
 
-    <form action="auth/login" method="post">
+    {% if erro %}
+        <p style="color: red;">{{ erro }}</p>
+    {% endif %}
+
+    {% if request.query_params.get("cadastro") == "ok" %}
+        <p style="color: green;">Cadastro realizado com sucesso! Faça login.</p>
+    {% endif %}
+
+    <form action="/auth/login" method="post">
         Email: <input type="email" id="email" name="email" required><br><br>
 
-       Senha: <input type="password" id="password" name="password" required><br><br>
+        Senha: <input type="password" id="password" name="senha" required><br><br>
 
         <button type="submit">Entrar</button>
     </form>

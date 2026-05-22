@@ -15,5 +15,5 @@ class Usuario(Base):
 
     # Permite desativar um usuario sem excluir ele do db
     ativo = Column(Boolean, default=True)
-    crando_em = Column(DateTime, sever_default=func.now())
+    crando_em = Column(DateTime, server_default=func.now())
     
